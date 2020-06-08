@@ -2,12 +2,14 @@ function init() {
     "use strict";
     let activeLineCount = 0;
 
-    const SEED_COUNT = 10,
-        GROWTH_FACTOR = 1,
+    const SEED_COUNT = 3,
+        GROWTH_FACTOR = 2,
         BIF_PROB = 0.02,
+        MIN_STEPS_BEFORE_BRANCH = 3,
         MAP_WIDTH = document.getElementById('map').clientWidth,
-        MAP_HEIGHT = document.getElementById('map').clientHeight,
-        seeds = Array(SEED_COUNT).fill().map(buildSeed);
+        MAP_HEIGHT = document.getElementById('map').clientHeight;
+
+    let seeds;
 
 
     function rnd(min, max) {
@@ -36,6 +38,20 @@ function init() {
                 mapCtx.moveTo(line.p0.x, line.p0.y);
                 mapCtx.lineTo(line.p1.x, line.p1.y);
                 mapCtx.stroke();
+            },
+            drawRect(line, width, colour) {
+                // const rectGradient = mapCtx.createLinearGradient(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
+                // rectGradient.addColorStop(0, colour);
+                // rectGradient.addColorStop(1, "rgba(255,255,255,1)");
+                const xDelta = width * Math.cos(line.angle),
+                    yDelta = width * Math.sin(line.angle);
+                mapCtx.fillStyle = colour;
+                mapCtx.beginPath();
+                mapCtx.moveTo(line.p0.x - xDelta, line.p0.y + yDelta)
+                mapCtx.lineTo(line.p1.x - xDelta, line.p1.y + yDelta)
+                mapCtx.lineTo(line.p1.x + xDelta, line.p1.y - yDelta)
+                mapCtx.lineTo(line.p0.x + xDelta, line.p0.y - yDelta)
+                mapCtx.fill();
             }
         };
     })();
@@ -48,10 +64,14 @@ function init() {
             parent,
             active: true,
             split: false,
+            steps: 0,
             grow() {
                 this.p1.x += Math.sin(angle) * growthRate * GROWTH_FACTOR;
                 this.p1.y += Math.cos(angle) * growthRate * GROWTH_FACTOR;
-                this.split = Math.random() < bifurcationProbability;
+                this.steps++;
+                if (this.steps > MIN_STEPS_BEFORE_BRANCH) {
+                    this.split = Math.random() < bifurcationProbability;
+                }
             },
             clip() {
                 this.p1.x -= Math.sin(angle) * growthRate * GROWTH_FACTOR;
@@ -164,19 +184,31 @@ function init() {
         grow();
         draw();
     };
-    document.getElementById('btn').onclick = () => {
-        step();
+    function onFinish() {
+        map.clear();
+        seeds.forEach(s => s.lines.forEach(line => {
+            map.drawRect(line, 100, `rgba(0,${Math.abs(Math.random() * 50)},${Math.abs(Math.random() * 255)},0.06)`)
+        }));
+        seeds.forEach(s => s.lines.forEach(map.drawLine))
     }
 
     function go (){
+        seeds = Array(SEED_COUNT).fill().map(buildSeed);
+        map.clear();
         const interval = setInterval(() => {
             if (!activeLineCount) {
                 console.log('done');
                 clearInterval(interval);
+                onFinish();
+                setTimeout(() => {
+                    go()
+                }, 3000)
+                return;
             }
             step();
-        }, 10)
+        }, 1)
     }
-    go()
+    document.getElementById('btn').onclick = go
+
 }
 init();
