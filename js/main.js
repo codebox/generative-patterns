@@ -52,9 +52,11 @@ function init() {
                 p0,
                 p1: {...p0},
                 angle,
+                generation: parent ? parent.generation + 1 : 0,
                 parent,
                 active: true,
                 split: false,
+                expired: false,
                 steps: 0,
                 rnd: rnd(),
                 grow() {
@@ -62,6 +64,9 @@ function init() {
                     this.p1.y += Math.cos(angle) * growthRate;
                     this.steps++;
                     this.split = rnd() < config.pBifurcation;
+                    if (rnd() < this.generation * config.expiryThreshold) {
+                        this.expired = true;
+                    }
                 },
                 clip() {
                     this.p1.x -= Math.sin(angle) * growthRate;
@@ -84,6 +89,11 @@ function init() {
                 grow() {
                     this.lines.filter(l=>l.active).forEach(line => {
                         line.grow();
+                        if (line.expired) {
+                            line.active = false;
+                            activeLineCount--;
+                            return;
+                        }
                         if (checkLineCollisions(line)) {
                             line.clip();
                             line.active = false;
@@ -126,22 +136,24 @@ function init() {
     }
 
 
-    function mulberry32(a) {
+    function randomFromSeed(seed = Date.now()) {
         // https://stackoverflow.com/a/47593316/138256
-        return function() {
-            var t = a += 0x6D2B79F5;
+        function mulberry32() {
+            var t = seed += 0x6D2B79F5;
             t = Math.imul(t ^ t >>> 15, t | 1);
             t ^= t + Math.imul(t ^ t >>> 7, t | 61);
             return ((t ^ t >>> 14) >>> 0) / 4294967296;
         }
+
+        console.log('seed',seed)
+        return function(a=1, b=0) {
+            const min = b && a,
+                max = b || a;
+            return mulberry32() * (max - min) + min;
+        }
     }
 
-    function rnd(a=1, b=0) {
-        const min = b && a,
-            max = b || a;
-        return Math.random() * (max - min) + min;
-    }
-
+    let rnd = randomFromSeed();
     const canvas = buildCanvas('map');
     let model;
 
@@ -219,11 +231,11 @@ function init() {
             model.forEachLineUntilTrue(canvas.drawLine);
             return true;
         }
-
     }
 
     function buildRandomConfig() {
         return {
+            seedCount: Math.round(rnd(1, 10)),
             pBifurcation: rnd(0.05, 0.1),
             minGrow: rnd(1,2),
             maxGrow: rnd(3,10),
@@ -231,11 +243,12 @@ function init() {
             rectBaseHue: rnd(360),
             rectHueVariation: rnd(100),
             rectAlpha: rnd(),
-            rectLightness: rnd(40,95)
+            rectLightness: rnd(40,95),
+            expiryThreshold: rnd(0.001)
         };
     }
 
-    function newSession(onComplete) {
+    function newSession() {
         let running = false;
 
         const session = {
@@ -244,6 +257,7 @@ function init() {
                     return;
                 }
                 running = true;
+                rnd = randomFromSeed();
                 model = buildModel(buildRandomConfig());
                 canvas.clear();
                 model.generate();
@@ -259,8 +273,8 @@ function init() {
                         requestAnimationFrame(run);
 
                     } else {
-                        session.stop()
-                        session.start();
+                        session.stop();
+                        setTimeout(session.start, 3000);
                     }
                 }
                 run();
