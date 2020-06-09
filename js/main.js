@@ -42,11 +42,11 @@ function init() {
         return canvas;
     }
 
-    function buildModel() {
+    function buildModel(config) {
         let activeLineCount = 0,
             seeds;
 
-        function buildLine(config, p0, angle, parent) {
+        function buildLine(p0, angle, parent) {
             const growthRate = rnd(config.minGrow, config.maxGrow)
             const line = {
                 p0,
@@ -73,11 +73,11 @@ function init() {
             return line;
         }
 
-        function buildSeed(config) {
+        function buildSeed() {
             const angle = rnd(0, Math.PI * 2);
             return {
                 angle,
-                lines: [buildLine(config, {
+                lines: [buildLine({
                     x: rnd(0, canvas.width),
                     y: rnd(0, canvas.height),
                 }, angle)],
@@ -93,7 +93,7 @@ function init() {
                         if (line.split) {
                             line.split = false;
                             const newAngle = line.angle + Math.PI/2 * (rnd() < 0.5 ? 1 : -1);
-                            this.lines.push(buildLine(config, {
+                            this.lines.push(buildLine({
                                 x: line.p1.x,
                                 y: line.p1.y,
                             }, newAngle, line))
@@ -104,16 +104,8 @@ function init() {
         }
 
         const model = {
-            generate(config) {
-                if (!config) {
-                    config = {
-                        pBifurcation: rnd(0.05, 0.2),
-                        minGrow: rnd(1,2),
-                        maxGrow: rnd(3,10),
-                    };
-                }
-                seeds = Array(config.seedCount).fill().map(() => buildSeed(config));
-                return config;
+            generate() {
+                seeds = Array(config.seedCount).fill().map(buildSeed);
             },
             grow() {
                 seeds.forEach(s => s.grow());
@@ -121,9 +113,12 @@ function init() {
             forEachLineUntilTrue(fn) {
                 (seeds || []).some(seed => {
                     return seed.lines.some(line => {
-                        return fn(line);
+                        return fn(line, config);
                     })
                 })
+            },
+            isActive() {
+                return activeLineCount > 0;
             }
         };
 
@@ -147,9 +142,8 @@ function init() {
         return Math.random() * (max - min) + min;
     }
 
-    const canvas = buildCanvas('map'),
-        model = buildModel();
-
+    const canvas = buildCanvas('map');
+    let model;
 
     function lineOffscreen(line) {
         return !canvas.isVisible(line.p1.x, line.p1.y);
@@ -201,12 +195,15 @@ function init() {
         return false;
     }
     function checkLineCollisions(line1) {
+        if (lineOffscreen(line1)) {
+            return true;
+        }
         let foundCollision = false;
         model.forEachLineUntilTrue(line2 => {
             if (line1 === line2 || line1.parent === line2 || line2.parent === line1) {
                 return;
             }
-            return foundCollision = lineOffscreen(line1) || linesIntersect(line1, line2);
+            return foundCollision = linesIntersect(line1, line2);
         });
         return foundCollision;
     }
@@ -214,29 +211,86 @@ function init() {
     function step() {
         model.grow();
 
-        // TODO check if model has changed, return if it hasn't
-        canvas.clear();
-        model.forEachLineUntilTrue(line => {
-            canvas.drawRect(line, Math.min(50 ,line.steps+1), `hsla(${210 + line.rnd * 40},100%,80%,0.15)`)
-        });
-        model.forEachLineUntilTrue(canvas.drawLine);
-    }
-
-    function runEachFrame(fn) {
-        const _ = () => {
-            fn();
-            requestAnimationFrame(_);
+        if (model.isActive()) {
+            canvas.clear();
+            model.forEachLineUntilTrue((line, config) => {
+                canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},100%,${config.rectLightness}%,${config.rectAlpha})`);
+            });
+            model.forEachLineUntilTrue(canvas.drawLine);
+            return true;
         }
-        _();
+
     }
 
-    function go () {
-        canvas.clear();
-        model.generate();
-
-        runEachFrame(step);
+    function buildRandomConfig() {
+        return {
+            pBifurcation: rnd(0.05, 0.1),
+            minGrow: rnd(1,2),
+            maxGrow: rnd(3,10),
+            maxRectWidth: rnd(0,200),
+            rectBaseHue: rnd(360),
+            rectHueVariation: rnd(100),
+            rectAlpha: rnd(),
+            rectLightness: rnd(40,95)
+        };
     }
-    document.getElementById('btn').onclick = go
+
+    function newSession(onComplete) {
+        let running = false;
+
+        const session = {
+            start() {
+                if (running) {
+                    return;
+                }
+                running = true;
+                model = buildModel(buildRandomConfig());
+                canvas.clear();
+                model.generate();
+
+                function run() {
+                    if (!running) {
+                        return;
+                    }
+
+                    const isActive = step();
+
+                    if (isActive) {
+                        requestAnimationFrame(run);
+
+                    } else {
+                        session.stop()
+                        session.start();
+                    }
+                }
+                run();
+            },
+            stop() {
+                if (!running) {
+                    return;
+                }
+                running = false;
+            },
+            isRunning() {
+                return running;
+            }
+        };
+        return session;
+    }
+
+    const btn = document.getElementById('btn');
+
+    let session = newSession()
+
+    btn.onclick = () => {
+        if (session.isRunning()) {
+            session.stop();
+            btn.innerText = 'Go';
+        } else {
+            session.start();
+            btn.innerText = 'Stop';
+        }
+    }
 
 }
 init();
