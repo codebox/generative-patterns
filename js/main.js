@@ -15,7 +15,8 @@ function init() {
                     updateDimensions = false;
                 }
             },
-            drawLine(line) {
+            drawLine(line, colour) {
+                ctx.strokeStyle = colour;
                 ctx.beginPath();
                 ctx.moveTo(line.p0.x, line.p0.y);
                 ctx.lineTo(line.p1.x, line.p1.y);
@@ -24,6 +25,15 @@ function init() {
             drawRect(line, width, colour) {
                 const xDelta = width * Math.cos(line.angle),
                     yDelta = width * Math.sin(line.angle);
+
+                // var gradient = ctx.createLinearGradient(line.p0.x - xDelta, line.p0.y + yDelta, line.p0.x + xDelta, line.p0.y - yDelta);
+                // gradient.addColorStop(0, 'rgba(255,255,255,0)');
+                // gradient.addColorStop(0.5, colour);
+                // gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                //
+                //
+                // ctx.fillStyle = gradient;
+
                 ctx.fillStyle = colour;
                 ctx.beginPath();
                 ctx.moveTo(line.p0.x - xDelta, line.p0.y + yDelta);
@@ -136,7 +146,7 @@ function init() {
     }
 
 
-    function randomFromSeed(seed = Date.now()) {
+    function randomFromSeed(seed) {
         // https://stackoverflow.com/a/47593316/138256
         function mulberry32() {
             var t = seed += 0x6D2B79F5;
@@ -145,7 +155,6 @@ function init() {
             return ((t ^ t >>> 14) >>> 0) / 4294967296;
         }
 
-        console.log('seed',seed)
         return function(a=1, b=0) {
             const min = b && a,
                 max = b || a;
@@ -153,7 +162,7 @@ function init() {
         }
     }
 
-    let rnd = randomFromSeed();
+    let rnd = randomFromSeed(Date.now());
     const canvas = buildCanvas('map');
     let model;
 
@@ -228,7 +237,11 @@ function init() {
             model.forEachLineUntilTrue((line, config) => {
                 canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},${config.rectSaturation}%,${config.rectLightness}%,${config.rectAlpha})`);
             });
-            model.forEachLineUntilTrue(canvas.drawLine);
+            model.forEachLineUntilTrue((line, config) => {
+                const lineColourValue = Math.round(config.lineDarkness * 100),
+                    lineColour = `rgb(${lineColourValue},${lineColourValue},${lineColourValue})`;
+                canvas.drawLine(line, lineColour)
+            });
             return true;
         }
     }
@@ -239,13 +252,15 @@ function init() {
             pBifurcation: rnd(0.05, 0.1),
             minGrow: rnd(1,2),
             maxGrow: rnd(3,10),
-            maxRectWidth: rnd(0,200),
+            maxRectWidth: rnd(0,100),
             rectBaseHue: rnd(360),
             rectSaturation: rnd(20,100),
             rectHueVariation: rnd(100),
-            rectAlpha: rnd(0.5,1),
-            rectLightness: rnd(20,100),
-            expiryThreshold: rnd(0.001)
+            rectAlpha: rnd(0.1,0.4),
+            rectLightness: rnd(20,70),
+            expiryThreshold: rnd(0.001),
+            randomnessSeed: Date.now(),
+            lineDarkness: rnd()
         };
     }
 
@@ -258,10 +273,12 @@ function init() {
                     return;
                 }
                 running = true;
-                rnd = randomFromSeed();
-                model = buildModel(buildRandomConfig());
+                const config = buildRandomConfig();
+                model = buildModel(config);
+                rnd = randomFromSeed(config.randomnessSeed);
                 canvas.clear();
                 model.generate();
+                console.log(JSON.stringify(config))
 
                 function run() {
                     if (!running) {
