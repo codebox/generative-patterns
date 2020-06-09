@@ -22,19 +22,19 @@ function init() {
                 ctx.lineTo(line.p1.x, line.p1.y);
                 ctx.stroke();
             },
-            drawRect(line, width, colour) {
+            drawRect(line, width, colour, withGradient) {
                 const xDelta = width * Math.cos(line.angle),
                     yDelta = width * Math.sin(line.angle);
 
-                // var gradient = ctx.createLinearGradient(line.p0.x - xDelta, line.p0.y + yDelta, line.p0.x + xDelta, line.p0.y - yDelta);
-                // gradient.addColorStop(0, 'rgba(255,255,255,0)');
-                // gradient.addColorStop(0.5, colour);
-                // gradient.addColorStop(1, 'rgba(255,255,255,0)');
-                //
-                //
-                // ctx.fillStyle = gradient;
-
-                ctx.fillStyle = colour;
+                if (withGradient) {
+                    const gradient = ctx.createLinearGradient(line.p0.x - xDelta, line.p0.y + yDelta, line.p0.x + xDelta, line.p0.y - yDelta);
+                    gradient.addColorStop(0, 'rgba(255,255,255,0)');
+                    gradient.addColorStop(0.5, colour);
+                    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = colour;
+                }
                 ctx.beginPath();
                 ctx.moveTo(line.p0.x - xDelta, line.p0.y + yDelta);
                 ctx.lineTo(line.p1.x - xDelta, line.p1.y + yDelta);
@@ -235,7 +235,7 @@ function init() {
         if (model.isActive()) {
             canvas.clear();
             model.forEachLineUntilTrue((line, config) => {
-                canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},${config.rectSaturation}%,${config.rectLightness}%,${config.rectAlpha})`);
+                canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},${config.rectSaturation}%,${config.rectLightness}%,${config.rectAlpha})`, config.useGradients);
             });
             model.forEachLineUntilTrue((line, config) => {
                 const lineColourValue = Math.round(config.lineDarkness * 100),
@@ -246,7 +246,8 @@ function init() {
         }
     }
 
-    function buildRandomConfig() {
+    function buildRandomConfig(randomnessSeed) {
+        const useGradients = rnd() > 0.3;
         return {
             seedCount: Math.round(rnd(1, 10)),
             pBifurcation: rnd(0.05, 0.1),
@@ -256,11 +257,12 @@ function init() {
             rectBaseHue: rnd(360),
             rectSaturation: rnd(20,100),
             rectHueVariation: rnd(100),
-            rectAlpha: rnd(0.1,0.4),
+            rectAlpha: useGradients ? rnd(0.4,0.8) : rnd(0.1,0.4),
             rectLightness: rnd(20,70),
             expiryThreshold: rnd(0.001),
             randomnessSeed: Date.now(),
-            lineDarkness: rnd()
+            lineDarkness: rnd(),
+            useGradients
         };
     }
 
