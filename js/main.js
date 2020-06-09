@@ -226,7 +226,7 @@ function init() {
         if (model.isActive()) {
             canvas.clear();
             model.forEachLineUntilTrue((line, config) => {
-                canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},100%,${config.rectLightness}%,${config.rectAlpha})`);
+                canvas.drawRect(line, Math.min(config.maxRectWidth, line.steps), `hsla(${(config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360},${config.rectSaturation}%,${config.rectLightness}%,${config.rectAlpha})`);
             });
             model.forEachLineUntilTrue(canvas.drawLine);
             return true;
@@ -241,9 +241,10 @@ function init() {
             maxGrow: rnd(3,10),
             maxRectWidth: rnd(0,200),
             rectBaseHue: rnd(360),
+            rectSaturation: rnd(20,100),
             rectHueVariation: rnd(100),
-            rectAlpha: rnd(),
-            rectLightness: rnd(40,95),
+            rectAlpha: rnd(0.5,1),
+            rectLightness: rnd(20,100),
             expiryThreshold: rnd(0.001)
         };
     }
