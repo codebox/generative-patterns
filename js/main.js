@@ -1,92 +1,158 @@
 function init() {
     "use strict";
-    let activeLineCount = 0;
 
-    const SEED_COUNT = 3,
-        GROWTH_FACTOR = 2,
-        BIF_PROB = 0.02,
-        MIN_STEPS_BEFORE_BRANCH = 3,
-        MAP_WIDTH = document.getElementById('map').clientWidth,
-        MAP_HEIGHT = document.getElementById('map').clientHeight;
+    function buildCanvas(elementId) {
+        const element = document.getElementById(elementId),
+            ctx = element.getContext('2d');
 
-    let seeds;
+        let updateDimensions = true;
+        const canvas = {
+            clear() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (updateDimensions) {
+                    ctx.canvas.width = canvas.width = element.clientWidth;
+                    ctx.canvas.height = canvas.height = element.clientHeight;
+                    updateDimensions = false;
+                }
+            },
+            drawLine(line) {
+                ctx.beginPath();
+                ctx.moveTo(line.p0.x, line.p0.y);
+                ctx.lineTo(line.p1.x, line.p1.y);
+                ctx.stroke();
+            },
+            drawRect(line, width, colour) {
+                const xDelta = width * Math.cos(line.angle),
+                    yDelta = width * Math.sin(line.angle);
+                ctx.fillStyle = colour;
+                ctx.beginPath();
+                ctx.moveTo(line.p0.x - xDelta, line.p0.y + yDelta);
+                ctx.lineTo(line.p1.x - xDelta, line.p1.y + yDelta);
+                ctx.lineTo(line.p1.x + xDelta, line.p1.y - yDelta);
+                ctx.lineTo(line.p0.x + xDelta, line.p0.y - yDelta);
+                ctx.fill();
+            },
+            isVisible(x,y) {
+                return x >= 0 && x < canvas.width && y >= 0 && y < canvas.height;
+            }
+        };
+
+        window.onresize = () => updateDimensions = true;
+
+        return canvas;
+    }
+
+    function buildModel() {
+        let activeLineCount = 0,
+            seeds;
+
+        function buildLine(config, p0, angle, parent) {
+            const growthRate = rnd(config.minGrow, config.maxGrow)
+            const line = {
+                p0,
+                p1: {...p0},
+                angle,
+                parent,
+                active: true,
+                split: false,
+                steps: 0,
+                rnd: rnd(),
+                grow() {
+                    this.p1.x += Math.sin(angle) * growthRate;
+                    this.p1.y += Math.cos(angle) * growthRate;
+                    this.steps++;
+                    this.split = rnd() < config.pBifurcation;
+                },
+                clip() {
+                    this.p1.x -= Math.sin(angle) * growthRate;
+                    this.p1.y -= Math.cos(angle) * growthRate;
+                }
+            };
+            activeLineCount++;
+            line.grow();
+            return line;
+        }
+
+        function buildSeed(config) {
+            const angle = rnd(0, Math.PI * 2);
+            return {
+                angle,
+                lines: [buildLine(config, {
+                    x: rnd(0, canvas.width),
+                    y: rnd(0, canvas.height),
+                }, angle)],
+                grow() {
+                    this.lines.filter(l=>l.active).forEach(line => {
+                        line.grow();
+                        if (checkLineCollisions(line)) {
+                            line.clip();
+                            line.active = false;
+                            activeLineCount--;
+                            return;
+                        }
+                        if (line.split) {
+                            line.split = false;
+                            const newAngle = line.angle + Math.PI/2 * (rnd() < 0.5 ? 1 : -1);
+                            this.lines.push(buildLine(config, {
+                                x: line.p1.x,
+                                y: line.p1.y,
+                            }, newAngle, line))
+                        }
+                    });
+                }
+            };
+        }
+
+        const model = {
+            generate(config) {
+                if (!config) {
+                    config = {
+                        pBifurcation: rnd(0.05, 0.2),
+                        minGrow: rnd(1,2),
+                        maxGrow: rnd(3,10),
+                    };
+                }
+                seeds = Array(config.seedCount).fill().map(() => buildSeed(config));
+                return config;
+            },
+            grow() {
+                seeds.forEach(s => s.grow());
+            },
+            forEachLineUntilTrue(fn) {
+                (seeds || []).some(seed => {
+                    return seed.lines.some(line => {
+                        return fn(line);
+                    })
+                })
+            }
+        };
+
+        return model;
+    }
 
 
-    function rnd(min, max) {
+    function mulberry32(a) {
+        // https://stackoverflow.com/a/47593316/138256
+        return function() {
+            var t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+    }
+
+    function rnd(a=1, b=0) {
+        const min = b && a,
+            max = b || a;
         return Math.random() * (max - min) + min;
     }
 
-    function grow() {
-        seeds.forEach(s => s.grow());
-    }
+    const canvas = buildCanvas('map'),
+        model = buildModel();
 
-    const map = (() => {
-        const mapCtx = document.getElementById('map').getContext('2d'),
-            width = MAP_WIDTH,
-            height = MAP_HEIGHT;
-        mapCtx.canvas.width = width;
-        mapCtx.canvas.height = height;
-
-        return {
-            width, height,
-            clear() {
-                mapCtx.clearRect(0, 0, width, height);
-            },
-            drawLine(line) {
-                // console.log(line.p0.x, line.p0.y, line.p1.x, line.p1.y)
-                mapCtx.beginPath();
-                mapCtx.moveTo(line.p0.x, line.p0.y);
-                mapCtx.lineTo(line.p1.x, line.p1.y);
-                mapCtx.stroke();
-            },
-            drawRect(line, width, colour) {
-                // const rectGradient = mapCtx.createLinearGradient(p1.x, p1.y, p2.x-p1.x, p2.y-p1.y);
-                // rectGradient.addColorStop(0, colour);
-                // rectGradient.addColorStop(1, "rgba(255,255,255,1)");
-                const xDelta = width * Math.cos(line.angle),
-                    yDelta = width * Math.sin(line.angle);
-                mapCtx.fillStyle = colour;
-                mapCtx.beginPath();
-                mapCtx.moveTo(line.p0.x - xDelta, line.p0.y + yDelta)
-                mapCtx.lineTo(line.p1.x - xDelta, line.p1.y + yDelta)
-                mapCtx.lineTo(line.p1.x + xDelta, line.p1.y - yDelta)
-                mapCtx.lineTo(line.p0.x + xDelta, line.p0.y - yDelta)
-                mapCtx.fill();
-            }
-        };
-    })();
-
-    function buildLine(p0, angle, growthRate, bifurcationProbability, parent) {
-        const line = {
-            p0,
-            p1: {...p0},
-            angle,
-            parent,
-            active: true,
-            split: false,
-            steps: 0,
-            grow() {
-                this.p1.x += Math.sin(angle) * growthRate * GROWTH_FACTOR;
-                this.p1.y += Math.cos(angle) * growthRate * GROWTH_FACTOR;
-                this.steps++;
-                if (this.steps > MIN_STEPS_BEFORE_BRANCH) {
-                    this.split = Math.random() < bifurcationProbability;
-                }
-            },
-            clip() {
-                this.p1.x -= Math.sin(angle) * growthRate * GROWTH_FACTOR;
-                this.p1.y -= Math.cos(angle) * growthRate * GROWTH_FACTOR;
-            }
-        };
-        activeLineCount++;
-        line.grow();
-        return line;
-    }
 
     function lineOffscreen(line) {
-        const x = line.p1.x,
-            y = line.p1.y;
-        return x < 0 || x > MAP_WIDTH || y < 0 || y > MAP_HEIGHT;
+        return !canvas.isVisible(line.p1.x, line.p1.y);
     }
 
     function orientation(p, q, r) {
@@ -134,79 +200,41 @@ function init() {
 
         return false;
     }
-    function checkLineCollisions(line) {
-        return seeds.some(seed => {
-            return seed.lines.some(other => {
-                if (other === line || line.parent === other || other.parent === line) {
-                    return;
-                }
-                return lineOffscreen(line) || linesIntersect(line, other);
-            })
-        })
-    }
-
-    function buildSeed(){
-        const angle = rnd(0, Math.PI * 2);
-        return {
-            angle,
-            lines: [buildLine({
-                x: rnd(0, MAP_WIDTH),
-                y: rnd(0, MAP_HEIGHT),
-            }, angle, rnd(1,3), BIF_PROB)],
-            grow() {
-                this.lines.filter(l=>l.active).forEach(line => {
-                    line.grow();
-                    if (checkLineCollisions(line)) {
-                        line.clip();
-                        console.log('dead')
-                        line.active = false;
-                        activeLineCount--;
-                        return;
-                    }
-                    if (line.split) {
-                        line.split = false;
-                        const newAngle = line.angle + Math.PI/2 * (Math.random() < 0.5 ? 1 : -1);
-                        this.lines.push(buildLine({
-                            x: line.p1.x,
-                            y: line.p1.y,
-                        }, newAngle, 1, BIF_PROB, line))
-                    }
-                });
-            }
-        };
-    }
-
-    function draw() {
-        map.clear();
-        seeds.forEach(s => s.lines.forEach(map.drawLine))
-    }
-    function step() {
-        grow();
-        draw();
-    };
-    function onFinish() {
-        map.clear();
-        seeds.forEach(s => s.lines.forEach(line => {
-            map.drawRect(line, 100, `rgba(0,${Math.abs(Math.random() * 50)},${Math.abs(Math.random() * 255)},0.06)`)
-        }));
-        seeds.forEach(s => s.lines.forEach(map.drawLine))
-    }
-
-    function go (){
-        seeds = Array(SEED_COUNT).fill().map(buildSeed);
-        map.clear();
-        const interval = setInterval(() => {
-            if (!activeLineCount) {
-                console.log('done');
-                clearInterval(interval);
-                onFinish();
-                setTimeout(() => {
-                    go()
-                }, 3000)
+    function checkLineCollisions(line1) {
+        let foundCollision = false;
+        model.forEachLineUntilTrue(line2 => {
+            if (line1 === line2 || line1.parent === line2 || line2.parent === line1) {
                 return;
             }
-            step();
-        }, 1)
+            return foundCollision = lineOffscreen(line1) || linesIntersect(line1, line2);
+        });
+        return foundCollision;
+    }
+
+    function step() {
+        model.grow();
+
+        // TODO check if model has changed, return if it hasn't
+        canvas.clear();
+        model.forEachLineUntilTrue(line => {
+            canvas.drawRect(line, Math.min(50 ,line.steps+1), `hsla(${210 + line.rnd * 40},100%,80%,0.15)`)
+        });
+        model.forEachLineUntilTrue(canvas.drawLine);
+    }
+
+    function runEachFrame(fn) {
+        const _ = () => {
+            fn();
+            requestAnimationFrame(_);
+        }
+        _();
+    }
+
+    function go () {
+        canvas.clear();
+        model.generate();
+
+        runEachFrame(step);
     }
     document.getElementById('btn').onclick = go
 

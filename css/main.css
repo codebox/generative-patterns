@@ -10,9 +10,10 @@ html,body {
     height: 100%
 }
 #map {
-    flex: 1 0 0;
+    flex: 1 1 0;
     border: 1px solid black;
     margin: 5px;
+    min-height: 0;
 }
 #btn {
     flex: 0 0 30px;
