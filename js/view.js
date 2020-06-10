@@ -50,7 +50,7 @@ const view = (() => {
     };
 
     elSeeds.onclick = e => {
-        (onSeedClickHandler || NO_OP)(e.target.innerText);
+        (onSeedClickHandler || NO_OP)(Number(e.target.innerText));
     };
 
     elDownload.onclick = () => {
@@ -146,8 +146,14 @@ const view = (() => {
             onSeedClickHandler = handler;
         },
         addSeed(newSeed) {
-            if (viewModel.seeds.unshift(newSeed) > MAX_SEEDS){
-                viewModel.seeds.length = MAX_SEEDS;
+            const seedIndex = viewModel.seeds.findIndex(s => s === newSeed);
+            if (seedIndex === -1) {
+                if (viewModel.seeds.unshift(newSeed) > MAX_SEEDS) {
+                    viewModel.seeds.length = MAX_SEEDS;
+                }
+            } else {
+                viewModel.seeds.splice(seedIndex, 1);
+                viewModel.seeds.unshift(newSeed);
             }
             updateFromModel();
         },

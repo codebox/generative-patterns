@@ -2,8 +2,8 @@ function init() {
     "use strict";
     view.init();
 
-    function startNew() {
-        const newSeed = generator.startNew();
+    function startNew(seed) {
+        const newSeed = generator.startNew(seed);
         view.addSeed(newSeed);
     }
 
@@ -18,7 +18,7 @@ function init() {
     });
 
     view.onSeedClick(seed => {
-
+        startNew(seed);
     });
 
     generator.onFinishedCurrent(() => {
