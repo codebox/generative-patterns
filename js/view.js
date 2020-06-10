@@ -17,7 +17,7 @@ const view = (() => {
 
         viewModel = {};
 
-    let onStartHandler, onResumeHandler, onPauseHandler, onDownloadHandler, onSeedClickHandler;
+    let onStartHandler, onResumeHandler, onPauseHandler, onSeedClickHandler;
 
     elPlayPause.onclick = () => {
         let handler, newState;
@@ -53,7 +53,12 @@ const view = (() => {
         (onSeedClickHandler || NO_OP)(e.target.innerText);
     };
 
-    elDownload.onclick = () => (onDownloadHandler || NO_OP)();
+    elDownload.onclick = () => {
+        const link = document.createElement('a');
+        link.download = `${viewModel.seeds[0]}.png`;
+        link.href = elCanvas.toDataURL();
+        link.click();
+    };
 
     function updateFromModel() {
         if (viewModel.state === STATE_RUNNING) {
@@ -136,9 +141,6 @@ const view = (() => {
         },
         onPause(handler) {
             onPauseHandler = handler;
-        },
-        onDownload(handler) {
-            onDownloadHandler = handler;
         },
         onSeedClick(handler) {
             onSeedClickHandler = handler;

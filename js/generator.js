@@ -221,7 +221,7 @@ const generator = (() => {
         let model, rnd, config, stopRequested, collisionDetector;
 
         return {
-            init() {
+            init(rnd) {
                 stopRequested = false;
                 rnd = randomFromSeed(seed);
                 config = buildRandomConfig(rnd);
@@ -265,6 +265,7 @@ const generator = (() => {
             render = createNewRender(seed, onFinishedCurrentHandler);
             render.init();
             render.start();
+            return seed;
         },
         resume() {
             render.start();

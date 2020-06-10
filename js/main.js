@@ -2,9 +2,12 @@ function init() {
     "use strict";
     view.init();
 
-    view.onStart(() => {
-        generator.startNew();
-    });
+    function startNew() {
+        const newSeed = generator.startNew();
+        view.addSeed(newSeed);
+    }
+
+    view.onStart(startNew);
 
     view.onResume(() => {
         generator.resume();
@@ -14,23 +17,16 @@ function init() {
         generator.pause();
     });
 
-    view.onDownload(() => {
-        //TODO
-    });
-
     view.onSeedClick(seed => {
 
     });
 
     generator.onFinishedCurrent(() => {
         if (view.isContinuous()) {
-            generator.startNew();
+            startNew();
         } else {
             view.setStopped();
         }
-    })
-
-    // view.addSeed(newSeed);
-    // view.setStopped();
+    });
 }
 init();
