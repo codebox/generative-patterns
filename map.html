@@ -6,9 +6,27 @@
     </head>
     <body>
         <div id="container">
-            <canvas id="map"></canvas>
-            <button id="btn">Go</button>
+            <canvas id="canvas"></canvas>
+            <div id="controls">
+                <button id="playPause"></button>
+                <button id="download">Download</button>
+                <div class="checkboxContainer">
+                    <label for="continuous">Continuous</label>
+                    <input id="continuous" type="checkbox">
+                </div>
+                <div class="checkboxContainer">
+                    <label for="postRender">Post Render</label>
+                    <input id="postRender" type="checkbox">
+                </div>
+                <ul id="recentSeeds">
+                    <li>seed 1</li>
+                    <li>seed 2</li>
+                    <li>seed 3</li>
+                </ul>
+            </div>
         </div>
+        <script src="js/view.js"></script>
+        <script src="js/generator.js"></script>
         <script src="js/main.js"></script>
     </body>
 </html>
