@@ -78,14 +78,18 @@ const view = (() => {
     const canvas = (() => {
         const ctx = elCanvas.getContext('2d');
 
+        function doUpdateDimensions(canvasObj) {
+            ctx.canvas.width = canvasObj.width = elCanvas.clientWidth;
+            ctx.canvas.height = canvasObj.height = elCanvas.clientHeight;
+        }
+
         let updateDimensions = true;
         const canvas = {
             clear() {
                 ctx.clearRect(0, 0, elCanvas.width, elCanvas.height);
                 if (updateDimensions) {
-                    ctx.canvas.width = this.width = elCanvas.clientWidth;
-                    ctx.canvas.height = this.height = elCanvas.clientHeight;
                     updateDimensions = false;
+                    doUpdateDimensions(this);
                 }
             },
             drawLine(line, colour) {
@@ -120,7 +124,18 @@ const view = (() => {
             }
         };
 
-        window.onresize = () => updateDimensions = true;
+        window.onresize = () => {
+            updateDimensions = true;
+            if (viewModel.state !== STATE_RUNNING) {
+                const currentImage = elCanvas.toDataURL();
+                doUpdateDimensions(canvas);
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = currentImage;
+            }
+        };
 
         return canvas;
     })();
