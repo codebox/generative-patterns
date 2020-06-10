@@ -12,6 +12,82 @@ html,body {
 #canvas {
     flex: 1 1 0;
     border: 1px solid black;
-    margin: 5px;
     min-height: 0;
+}
+#canvas, #controls {
+    margin: 5px;
+    border: 1px solid black;
+}
+#controls {
+    margin-top: -6px;
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+#controls button {
+    border: 1px solid black;
+    padding: 5px 10px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 3px;
+    text-transform: uppercase;
+    width: 100px;
+    background-color: transparent;
+}
+#controls button:disabled {
+    border: 1px solid grey;
+    cursor: default;
+}
+.checkboxContainer, #seedList {
+    display: flex;
+    flex-direction: row;
+    margin: 0 0 0 10px;
+}
+#seedList {
+    margin: 0 0 0 20px;
+}
+#recentSeeds {
+    margin: 0 10px;
+    padding: 0;
+}
+#recentSeeds li {
+    display: inline-block;
+    margin-right: 5px;
+    cursor: pointer;
+}
+#recentSeeds li:hover {
+    text-decoration: underline;
+}
+#recentSeeds li:first-child {
+    font-weight: bold;
+}
+#checkboxes {
+    display: flex;
+    flex-direction: row;
+}
+@media screen and (max-width:480px) {
+    #controls {
+        flex-direction: column;
+        padding: 0px;
+    }
+    #controls button {
+        width: 100%;
+        margin: 5px 0 0 0;
+        border-radius: 0;
+    }
+    .checkboxContainer, #seedList {
+        margin: 5px;
+    }
+    #seedList {
+        flex-direction: column;
+    }
+    #checkboxes {
+        margin: 5px;
+    }
+    #seedList {
+        width: 100%;
+        align-items: center;
+        margin-top: -5px;
+    }
 }

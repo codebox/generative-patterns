@@ -258,7 +258,7 @@ const generator = (() => {
         onFinishedCurrent(handler) {
             onFinishedCurrentHandler = handler;
         },
-        startNew(seed=Date.now()) {
+        startNew(seed=Date.now() & 0xfffff) {
             if (render) {
                 render.stop();
             }
