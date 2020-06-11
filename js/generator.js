@@ -94,7 +94,6 @@ const generator = (() => {
         return model;
     }
 
-
     function randomFromSeed(seed) {
         // https://stackoverflow.com/a/47593316/138256
         function mulberry32() {
@@ -112,6 +111,8 @@ const generator = (() => {
     }
 
     function buildCollisionDetector(canvas) {
+        const CLOCKWISE = 1, ANTICLOCKWISE = 2, COLINEAR = 0;
+
         function lineOffscreen(line) {
             return !canvas.isVisible(line.p1.x, line.p1.y);
         }
@@ -119,43 +120,40 @@ const generator = (() => {
         function orientation(p, q, r) {
             const val = ((q.y - p.y) * (r.x - q.x)) - ((q.x - p.x) * (r.y - q.y));
             if (val > 0) {
-                return 1;
+                return CLOCKWISE;
             } else if (val < 0) {
-                return 2;
+                return ANTICLOCKWISE;
             }
-            return 0;
+            return COLINEAR;
         }
+
         function onSegment(p, q, r){
-            if ( (q.x <= Math.max(p.x, r.x)) && (q.x >= Math.min(p.x, r.x)) && (q.y <= Math.max(p.y, r.y)) && (q.y >= Math.min(p.y, r.y))){
-                return true;
-            }
-            return false;
+            return (q.x <= Math.max(p.x, r.x)) && (q.x >= Math.min(p.x, r.x)) && (q.y <= Math.max(p.y, r.y)) && (q.y >= Math.min(p.y, r.y));
         }
 
         function linesIntersect(l1, l2) {
-            const p1 = l1.p0, q1 = l1.p1, p2 = l2.p0, q2 = l2.p1;
-            const o1 = orientation(p1, q1, p2),
-                o2 = orientation(p1, q1, q2),
-                o3 = orientation(p2, q2, p1),
-                o4 = orientation(p2, q2, q1);
+            const o1 = orientation(l1.p0, l1.p1, l2.p0),
+                o2 = orientation(l1.p0, l1.p1, l2.p1),
+                o3 = orientation(l2.p0, l2.p1, l1.p0),
+                o4 = orientation(l2.p0, l2.p1, l1.p1);
 
             if ((o1 != o2) && (o3 != o4)) {
                 return true;
             }
 
-            if ((o1 == 0) && onSegment(p1, p2, q1)) {
+            if ((o1 === COLINEAR) && onSegment(l1.p0, l2.p0, l1.p1)) {
                 return true;
             }
 
-            if ((o2 == 0) && onSegment(p1, q2, q1)) {
+            if ((o2 === COLINEAR) && onSegment(l1.p0, l2.p1, l1.p1)) {
                 return true;
             }
 
-            if ((o3 == 0) && onSegment(p2, p1, q2)) {
+            if ((o3 === COLINEAR) && onSegment(l2.p0, l1.p0, l2.p1)) {
                 return true;
             }
 
-            if ((o4 == 0) && onSegment(p2, q1, q2)) {
+            if ((o4 === COLINEAR) && onSegment(l2.p0, l1.p1, l2.p1)) {
                 return true;
             }
 
@@ -167,6 +165,7 @@ const generator = (() => {
                 if (lineOffscreen(line1)) {
                     return true;
                 }
+
                 let foundCollision = false;
                 forEachLineUntilTrue(line2 => {
                     if (line1 === line2 || line1.parent === line2 || line2.parent === line1) {
