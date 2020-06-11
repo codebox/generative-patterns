@@ -3,7 +3,7 @@ const view = (() => {
     const elPlayPause = document.getElementById('playPause'),
         elDownload = document.getElementById('download'),
         elContinuous = document.getElementById('continuous'),
-        elPostRender = document.getElementById('postRender'),
+        elPencil = document.getElementById('pencil'),
         elSeeds = document.getElementById('recentSeeds'),
         elCanvas = document.getElementById('canvas'),
 
@@ -17,7 +17,7 @@ const view = (() => {
 
         viewModel = {};
 
-    let onStartHandler, onResumeHandler, onPauseHandler, onSeedClickHandler;
+    let onStartHandler, onResumeHandler, onPauseHandler, onSeedClickHandler, onPencilClickHandler;
 
     elPlayPause.onclick = () => {
         let handler, newState;
@@ -45,11 +45,12 @@ const view = (() => {
         viewModel.isContinuous = elContinuous.checked;
     };
 
-    elPostRender.onclick = () => {
-        viewModel.isPostRender = elPostRender.checked;
+    elPencil.onclick = () => {
+        (onPencilClickHandler || NO_OP)();
     };
 
     elSeeds.onclick = e => {
+        viewModel.state = STATE_RUNNING;
         (onSeedClickHandler || NO_OP)(Number(e.target.innerText));
     };
 
@@ -70,9 +71,8 @@ const view = (() => {
         }
 
         elContinuous.checked = viewModel.isContinuous;
-        elPostRender.checked = viewModel.isPostRender;
         elSeeds.innerHTML = viewModel.seeds.map(seed => `<li>${seed}</li>`).join('');
-        elDownload.disabled = (viewModel.state === STATE_INIT || viewModel.state === STATE_RUNNING);
+        elPencil.disabled = elDownload.disabled = (viewModel.state === STATE_INIT || viewModel.state === STATE_RUNNING);
     }
 
     const canvas = (() => {
@@ -86,7 +86,8 @@ const view = (() => {
         let updateDimensions = true;
         const canvas = {
             clear() {
-                ctx.clearRect(0, 0, elCanvas.width, elCanvas.height);
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, 0, elCanvas.width, elCanvas.height);
                 if (updateDimensions) {
                     updateDimensions = false;
                     doUpdateDimensions(this);
@@ -94,6 +95,7 @@ const view = (() => {
             },
             drawLine(line, colour) {
                 ctx.strokeStyle = colour;
+                ctx.lineWidth=1;
                 ctx.beginPath();
                 ctx.moveTo(line.p0.x, line.p0.y);
                 ctx.lineTo(line.p1.x, line.p1.y);
@@ -119,6 +121,20 @@ const view = (() => {
                 ctx.lineTo(line.p0.x + xDelta, line.p0.y - yDelta);
                 ctx.fill();
             },
+            drawWithPencil(line, width, colourValues, rnd) {
+                const ALPHA_FADEOUT_RATE = 4,
+                    ALPHA_RANDOMNESS = 0.1;
+                let alpha = 0.4;
+
+                for (let d=1; d<width;d++){
+                    ctx.strokeStyle = `hsla(${colourValues.h},${colourValues.s}%,${colourValues.l}%,${alpha + ALPHA_RANDOMNESS * (rnd() - 0.5)})`;
+                    ctx.beginPath();
+                    ctx.moveTo(line.p0.x - d * Math.cos(line.angle), line.p0.y + d * Math.sin(line.angle));
+                    ctx.lineTo(line.p1.x - d * Math.cos(line.angle), line.p1.y + d * Math.sin(line.angle));
+                    ctx.stroke();
+                    alpha *= (1 - ALPHA_FADEOUT_RATE/width);
+                }
+            },
             isVisible(x,y) {
                 return x >= 0 && x < this.width && y >= 0 && y < this.height;
             }
@@ -143,8 +159,7 @@ const view = (() => {
     const viewObj = {
         init() {
             viewModel.state = STATE_INIT;
-            viewModel.isContinuous = true;
-            viewModel.isPostRender = false;
+            viewModel.isContinuous = false;
             viewModel.seeds = [];
             updateFromModel();
         },
@@ -156,6 +171,9 @@ const view = (() => {
         },
         onPause(handler) {
             onPauseHandler = handler;
+        },
+        onPencil(handler) {
+            onPencilClickHandler = handler;
         },
         onSeedClick(handler) {
             onSeedClickHandler = handler;
@@ -178,9 +196,6 @@ const view = (() => {
         },
         isContinuous() {
             return viewModel.isContinuous;
-        },
-        isPostRender() {
-            return viewModel.isPostRender;
         },
         canvas
     };

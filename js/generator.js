@@ -6,7 +6,7 @@ const generator = (() => {
             seeds;
 
         function buildLine(p0, angle, parent) {
-            const growthRate = rnd(config.minGrow, config.maxGrow)
+            const growthRate = 1;
             const line = {
                 p0,
                 p1: {...p0},
@@ -181,11 +181,10 @@ const generator = (() => {
 
     function buildRandomConfig(rnd) {
         const useGradients = rnd() > 0.3;
+
         return {
             seedCount: Math.round(rnd(1, 10)),
-            pBifurcation: rnd(0.05, 0.1),
-            minGrow: rnd(1,2),
-            maxGrow: rnd(3,10),
+            pBifurcation: rnd(0.02, 0.05),
             maxRectWidth: rnd(0,100),
             rectBaseHue: rnd(360),
             rectSaturation: rnd(20,100),
@@ -194,10 +193,10 @@ const generator = (() => {
             rectLightness: rnd(20,70),
             expiryThreshold: rnd(0.001),
             lineDarkness: rnd(),
+            pencilHorizontal: rnd() > 0.5,
             useGradients
         };
     }
-
 
     function createNewRender(seed, onFinished) {
         function update() {
@@ -220,8 +219,8 @@ const generator = (() => {
 
         let model, rnd, config, stopRequested, collisionDetector;
 
-        return {
-            init(rnd) {
+        const render = {
+            init() {
                 stopRequested = false;
                 rnd = randomFromSeed(seed);
                 config = buildRandomConfig(rnd);
@@ -248,8 +247,26 @@ const generator = (() => {
             },
             stop() {
                 stopRequested = true;
+            },
+            applyPencil() {
+                view.canvas.clear();
+                model.forEachLineUntilTrue((line, config) => {
+                    if (!config.pencilHorizontal || Math.sin(line.angle)**2 < rnd()) {
+                        view.canvas.drawWithPencil(line, rnd(10, 100), {
+                            h: (config.rectBaseHue + (line.rnd - 0.5) * config.rectHueVariation) % 360,
+                            s: config.rectSaturation,
+                            l: config.rectLightness
+                        }, rnd);
+                    }
+                });
+                model.forEachLineUntilTrue((line, config) => {
+                    const lineColourValue = Math.round(config.lineDarkness * 100),
+                        lineColour = `rgb(${lineColourValue},${lineColourValue},${lineColourValue})`;
+                    view.canvas.drawLine(line, lineColour)
+                });
             }
         };
+        return render;
     }
 
     let render, onFinishedCurrentHandler = () => {};
@@ -272,6 +289,9 @@ const generator = (() => {
         },
         pause() {
             render.stop();
+        },
+        applyPencil() {
+            render.applyPencil();
         }
     };
 

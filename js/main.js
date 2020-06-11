@@ -17,6 +17,10 @@ function init() {
         generator.pause();
     });
 
+    view.onPencil(() => {
+        generator.applyPencil();
+    });
+
     view.onSeedClick(seed => {
         startNew(seed);
     });
