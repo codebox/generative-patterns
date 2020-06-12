@@ -1,6 +1,6 @@
 # Generative Pattern Maker
 
-Here's a web-based [generative pattern maker](https://codebox.net/html_raw/generative-patterns/index.html) that produces images like these:
+Here's a web-based [generative pattern maker](https://codebox.net/pages/generative-patterns) that produces images like these:
 
 <img src="https://codebox.net/assets/images/generative-patterns/preview/tl.png" alt="Generative Pattern 1" width="300px" height="300px"></a><img src="https://codebox.net/assets/images/generative-patterns/preview/tm.png" alt="Generative Pattern 2" width="300px" height="300px"></a><img src="https://codebox.net/assets/images/generative-patterns/preview/tr.png" alt="Generative Pattern 3" width="300px" height="300px"></a><br>
 <img src="https://codebox.net/assets/images/generative-patterns/preview/ml.png" alt="Generative Pattern 4" width="300px" height="300px"></a><img src="https://codebox.net/assets/images/generative-patterns/preview/mm.png" alt="Generative Pattern 5" width="300px" height="300px"></a><img src="https://codebox.net/assets/images/generative-patterns/preview/mr.png" alt="Generative Pattern 6" width="300px" height="300px"></a><br>
